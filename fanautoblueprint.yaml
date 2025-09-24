@@ -107,7 +107,8 @@ action:
         Vocht schaal: {{ vocht_schaal | round(1) }}, Buiten factor: {{ buiten_factor }},
         PM boost: {{ boost_pm | round(1) }}, Ventilatie: {{ totaal }}%
   - service: input_text.set_value
-    enty_id: !input log_sensor
+    target:
+      entity_id: !input log_sensor
     data:
       value: "{{ logbericht }}"
   - service: light.turn_on
