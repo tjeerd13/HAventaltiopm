@@ -1,9 +1,9 @@
+
 blueprint:
-  name: Ventilatie met logging naar sensor
+  name: Ventilatie met logging naar sensor (correcte versie)
   description: >
     Regelt de ventilatie proportioneel tussen 0-100% op basis van binnenluchtvochtigheid,
     buitenluchtvochtigheid en PM2.5-waarde. Logging wordt geschreven naar een input_text helper.
-    V2.0 - Verbeterde logica en parameters.
   domain: automation
   input:
     indoor_humidity_sensor:
@@ -71,12 +71,12 @@ condition: []
 
 action:
   - variables:
-      binnen: "{{ states[indoor_humidity_sensor] | float }}"
-      buiten: "{{ states[outdoor_humidity_sensor] | float }}"
-      pm25: "{{ states[pm25_sensor] | float }}"
-      min_vocht: !input min_indoor_humidity
-      max_buiten: !input max_outdoor_humidity
-      pm_drempel: !input pm25_threshold
+      binnen: "{{ states(indoor_humidity_sensor) | float }}"
+      buiten: "{{ states(outdoor_humidity_sensor) | float }}"
+      pm25: "{{ states(pm25_sensor) | float }}"
+      min_vocht: "{{ min_indoor_humidity }}"
+      max_buiten: "{{ max_outdoor_humidity }}"
+      pm_drempel: "{{ pm25_threshold }}"
       vocht_schaal: >
         {% if binnen < min_vocht %}
           0
