@@ -1,0 +1,61 @@
+
+blueprint:
+  name: Ventilatie op basis van vochtigheid, derivative en PM2.5
+  description: >
+    Regelt de ventilatie proportioneel tussen 0-100% op basis van luchtvochtigheid,
+    stijgsnelheid van luchtvochtigheid (derivative) en PM2.5-waarde.
+  domain: automation
+  input:
+    humidity_sensor:
+      name: Luchtvochtigheidssensor
+      selector:
+        entity:
+          domain: sensor
+    derivative_sensor:
+      name: Derivative sensor luchtvochtigheid
+      selector:
+        entity:
+          domain: sensor
+    pm25_sensor:
+      name: PM2.5 sensor
+      selector:
+        entity:
+          domain: sensor
+    ventilation_entity:
+      name: Ventilatie-entiteit (light)
+      selector:
+        entity:
+          domain: light
+
+trigger:
+  - platform: state
+    entity_id: !input humidity_sensor
+  - platform: state
+    entity_id: !input derivative_sensor
+  - platform: state
+    entity_id: !input pm25_sensor
+
+condition: []
+
+action:
+  - variables:
+      vochtigheid: "{{ states[inputs.humidity_sensor] | float }}"
+      stijging: "{{ states[inputs.derivative_sensor] | float }}"
+      pm25: "{{ states[inputs.pm25_sensor] | float }}"
+      ventilatie: >
+        {% if vochtigheid < 50 and pm25 < 10 %}
+          0
+        {% else %}
+          {% set vocht_schaal = ((vochtigheid - 50) / 30 * 60) %}
+          {% set boost_stijging = stijging * 20 %}
+          {% set boost_pm = (pm25 / 100 * 40) %}
+          {% set totaal = vocht_schaal + boost_stijging + boost_pm %}
+          {{ [totaal, 100] | min | round(0) }}
+        {% endif %}
+  - service: light.turn_on
+    target:
+      entity_id: !input ventilation_entity
+    data:
+      brightness_pct: "{{ ventilatie }}"
+
+mode: single
