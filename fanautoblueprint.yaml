@@ -3,6 +3,7 @@ blueprint:
   description: >
     Regelt de ventilatie proportioneel tussen 0-100% op basis van binnenluchtvochtigheid,
     buitenluchtvochtigheid en PM2.5-waarde. Logging wordt geschreven naar een input_text helper.
+    V2.0 - Verbeterde logica en parameters.
   domain: automation
   input:
     indoor_humidity_sensor:
