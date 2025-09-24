@@ -110,7 +110,8 @@ action:
     target:
       entity_id: !input log_sensor
     data:
-      value: "{{ logbericht }}"
+      value: test
+     #value: "{{ logbericht }}"
   - service: light.turn_on
     target:
       entity_id: !input ventilation_entity
