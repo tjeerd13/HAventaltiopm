@@ -1,18 +1,17 @@
-
 blueprint:
-  name: Ventilatie op basis van vochtigheid, derivative en PM2.5
+  name: Ventilatie met logging naar sensor
   description: >
-    Regelt de ventilatie proportioneel tussen 0-100% op basis van luchtvochtigheid,
-    stijgsnelheid van luchtvochtigheid (derivative) en PM2.5-waarde.
+    Regelt de ventilatie proportioneel tussen 0-100% op basis van binnenluchtvochtigheid,
+    buitenluchtvochtigheid en PM2.5-waarde. Logging wordt geschreven naar een input_text helper. Maak een input_text helper aan via Instellingen → Hulpmiddelen → Toevoegen → input_text
   domain: automation
   input:
-    humidity_sensor:
-      name: Luchtvochtigheidssensor
+    indoor_humidity_sensor:
+      name: Binnenluchtvochtigheidssensor
       selector:
         entity:
           domain: sensor
-    derivative_sensor:
-      name: Derivative sensor luchtvochtigheid
+    outdoor_humidity_sensor:
+      name: Buitenluchtvochtigheidssensor
       selector:
         entity:
           domain: sensor
@@ -26,12 +25,44 @@ blueprint:
       selector:
         entity:
           domain: light
+    log_sensor:
+      name: Logging helper (input_text)
+      selector:
+        entity:
+          domain: input_text
+    min_indoor_humidity:
+      name: Minimale binnenluchtvochtigheid
+      default: 50
+      selector:
+        number:
+          min: 30
+          max: 80
+          unit_of_measurement: "%"
+          mode: slider
+    max_outdoor_humidity:
+      name: Maximale buitenluchtvochtigheid
+      default: 80
+      selector:
+        number:
+          min: 50
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+    pm25_threshold:
+      name: PM2.5 drempelwaarde
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 500
+          unit_of_measurement: "µg/m³"
+          mode: slider
 
 trigger:
   - platform: state
-    entity_id: !input humidity_sensor
+    entity_id: !input indoor_humidity_sensor
   - platform: state
-    entity_id: !input derivative_sensor
+    entity_id: !input outdoor_humidity_sensor
   - platform: state
     entity_id: !input pm25_sensor
 
@@ -39,23 +70,48 @@ condition: []
 
 action:
   - variables:
-      vochtigheid: "{{ states[inputs.humidity_sensor] | float }}"
-      stijging: "{{ states[inputs.derivative_sensor] | float }}"
+      binnen: "{{ states[inputs.indoor_humidity_sensor] | float }}"
+      buiten: "{{ states[inputs.outdoor_humidity_sensor] | float }}"
       pm25: "{{ states[inputs.pm25_sensor] | float }}"
-      ventilatie: >
-        {% if vochtigheid < 50 and pm25 < 10 %}
+      min_vocht: !input min_indoor_humidity
+      max_buiten: !input max_outdoor_humidity
+      pm_drempel: !input pm25_threshold
+      vocht_schaal: >
+        {% if binnen < min_vocht %}
           0
         {% else %}
-          {% set vocht_schaal = ((vochtigheid - 50) / 30 * 60) %}
-          {% set boost_stijging = stijging * 20 %}
-          {% set boost_pm = (pm25 / 100 * 40) %}
-          {% set totaal = vocht_schaal + boost_stijging + boost_pm %}
-          {{ [totaal, 100] | min | round(0) }}
+          {{ ((binnen - min_vocht) / (80 - min_vocht) * 60) }}
         {% endif %}
+      buiten_factor: >
+        {% if buiten > max_buiten %}
+          0.5
+        {% elif buiten > (max_buiten - 20) %}
+          0.7
+        {% else %}
+          1.0
+        {% endif %}
+      boost_pm: >
+        {% if pm25 < 10 %}
+          0
+        {% else %}
+          {{ (pm25 / pm_drempel * 40) }}
+        {% endif %}
+      totaal: >
+        {% set totaal = (vocht_schaal * buiten_factor) + boost_pm %}
+        {{ [totaal, 100] | min | round(0) }}
+      logbericht: >
+        Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, PM2.5: {{ pm25 }} µg/m³,
+        Vocht schaal: {{ vocht_schaal | round(1) }}, Buiten factor: {{ buiten_factor }},
+        PM boost: {{ boost_pm | round(1) }}, Ventilatie: {{ totaal }}%
+  - service: input_text.set_value
+    target:
+      entity_id: !input log_sensor
+    data:
+      value: "{{ logbericht }}"
   - service: light.turn_on
     target:
       entity_id: !input ventilation_entity
     data:
-      brightness_pct: "{{ ventilatie }}"
+      brightness_pct: "{{ totaal }}"
 
 mode: single
