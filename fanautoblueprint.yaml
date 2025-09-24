@@ -115,10 +115,4 @@ action:
       entity_id: !input ventilation_entity
     data:
       brightness_pct: "{{ totaal }}"
-  - service: persistent_notification.create
-    data:
-      title: "Logtest"
-      message: "{{ states(log_sensor) }}"
-
-
 mode: single
