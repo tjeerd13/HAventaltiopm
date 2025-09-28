@@ -136,11 +136,7 @@ action:
         {% set totaal = (vocht_schaal * buiten_factor) + boost_pm %}
         {{ [totaal, 100] | min | round(0) }}
       verschil: "{{ (binnen - buiten) | abs }}"
-      logbericht: >
-        Override: {{ override_actief }}, Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, Verschil: {{ verschil }}%,
-        PM2.5: {{ pm25 }} µg/m³, Vocht schaal: {{ vocht_schaal | round(1) }},
-        Buiten factor: {{ buiten_factor }}, PM boost: {{ boost_pm | round(1) }},
-        Ventilatie: {{ totaal }}%
+      logbericht: "Override: {{ override_actief }}, Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, Verschil: {{ verschil }}%, PM2.5: {{ pm25 }} µg/m³, Vocht schaal: {{ vocht_schaal | round(1) }}, Buiten factor: {{ buiten_factor }}, PM boost: {{ boost_pm | round(1) }}, Ventilatie: {{ totaal }}%"
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
