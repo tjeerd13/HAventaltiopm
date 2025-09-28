@@ -1,73 +1,3 @@
-blueprint:
-  name: Ventilatie met logging naar sensor (correcte versie)
-  description: >
-    Regelt de ventilatie proportioneel tussen 0-100% op basis van binnenluchtvochtigheid,
-    buitenluchtvochtigheid en PM2.5-waarde. Logging wordt geschreven naar een input_text helper.
-  domain: automation
-  input:
-    indoor_humidity_sensor:
-      name: Binnenluchtvochtigheidssensor
-      selector:
-        entity:
-          domain: sensor
-    outdoor_humidity_sensor:
-      name: Buitenluchtvochtigheidssensor
-      selector:
-        entity:
-          domain: sensor
-    pm25_sensor:
-      name: PM2.5 sensor
-      selector:
-        entity:
-          domain: sensor
-    ventilation_entity:
-      name: Ventilatie-entiteit (light)
-      selector:
-        entity:
-          domain: light
-    log_sensor:
-      name: Logging helper (input_text)
-      selector:
-        entity:
-          domain: input_text
-    min_indoor_humidity:
-      name: Minimale binnenluchtvochtigheid
-      default: 50
-      selector:
-        number:
-          min: 30
-          max: 80
-          unit_of_measurement: "%"
-          mode: slider
-    max_outdoor_humidity:
-      name: Maximale buitenluchtvochtigheid
-      default: 80
-      selector:
-        number:
-          min: 50
-          max: 100
-          unit_of_measurement: "%"
-          mode: slider
-    pm25_threshold:
-      name: PM2.5 drempelwaarde
-      default: 100
-      selector:
-        number:
-          min: 0
-          max: 500
-          unit_of_measurement: "µg/m³"
-          mode: slider
-
-trigger:
-  - platform: state
-    entity_id: !input indoor_humidity_sensor
-  - platform: state
-    entity_id: !input outdoor_humidity_sensor
-  - platform: state
-    entity_id: !input pm25_sensor
-
-condition: []
-
 action:
   - variables:
       binnen_sensor: !input indoor_humidity_sensor
@@ -79,6 +9,10 @@ action:
       min_vocht: !input min_indoor_humidity
       max_buiten: !input max_outdoor_humidity
       pm_drempel: !input pm25_threshold
+      verschil_drempel: !input humidity_diff_threshold
+      override_switch: !input override_switch
+      override_duur: !input override_duration
+      override_actief: "{{ is_state(override_switch, 'on') }}"
       vocht_schaal: >
         {% if binnen < min_vocht %}
           0
@@ -102,17 +36,42 @@ action:
       totaal: >
         {% set totaal = (vocht_schaal * buiten_factor) + boost_pm %}
         {{ [totaal, 100] | min | round(0) }}
+      verschil: "{{ (binnen - buiten) | abs }}"
       logbericht: >
-        Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, PM2.5: {{ pm25 }} µg/m³,
-        Vocht schaal: {{ vocht_schaal | round(1) }}, Buiten factor: {{ buiten_factor }},
-        PM boost: {{ boost_pm | round(1) }}, Ventilatie: {{ totaal }}%
+        Override: {{ override_actief }}, Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, Verschil: {{ verschil }}%,
+        PM2.5: {{ pm25 }} µg/m³, Vocht schaal: {{ vocht_schaal | round(1) }},
+        Buiten factor: {{ buiten_factor }}, PM boost: {{ boost_pm | round(1) }},
+        Ventilatie: {{ totaal }}%
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
       value: "{{ logbericht }}"
-  - service: light.turn_on
-    target:
-      entity_id: !input ventilation_entity
-    data:
-      brightness_pct: "{{ totaal }}"
-mode: single
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ override_actief }}"
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: !input ventilation_entity
+            data:
+              brightness_pct: 80
+          - delay:
+              minutes: !input override_duration
+          - service: input_boolean.turn_off
+            target:
+              entity_id: !input override_switch
+      - conditions:
+          - condition: template
+            value_template: "{{ verschil < verschil_drempel }}"
+        sequence:
+          - service: light.turn_off
+            target:
+              entity_id: !input ventilation_entity
+      - conditions: []
+        sequence:
+          - service: light.turn_on
+            target:
+              entity_id: !input ventilation_entity
+            data:
+              brightness_pct: "{{ totaal }}"
