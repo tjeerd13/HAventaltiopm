@@ -144,6 +144,10 @@ action:
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
+      value: "DEBUG: binnen={{ binnen }}, buiten={{ buiten }}, pm25={{ pm25 }}, verschil={{ verschil }}, totaal={{ totaal }}"
+  - service: input_text.set_value
+    data:
+      entity_id: !input log_sensor
       value: "{{ logbericht }}"
   - choose:
       - conditions:
