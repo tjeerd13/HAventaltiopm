@@ -5,7 +5,7 @@ blueprint:
     buitenluchtvochtigheid en PM2.5-waarde. Logging wordt geschreven naar een input_text helper.
     Ventilatie wordt uitgeschakeld als het verschil tussen binnen- en buitenluchtvochtigheid kleiner is dan een instelbare drempel.
     Een override-knop kan de ventilatie tijdelijk op 80% zetten.
-    V 28-09-2025 2.1: Correctie in berekening buiten_factor + timer functionaliteit.
+    V 28-09-2025 2.1: Correctie in berekening buiten_factor.
   domain: automation
   input:
     indoor_humidity_sensor:
@@ -139,7 +139,7 @@ action:
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
-      value: "binnen={{ binnen}}, buiten={{ buiten | round(1) }}, verschil={{ verschil | round(1) }}, pm25={{ pm25 | round(1) }}, totaal={{ totaal | round(1) }}"
+      value: "binnen={{ binnen}}, buiten={{ buiten}}, verschil={{ verschil }}, pm25={{ pm25}}, verschil={{ verschil}}, totaal={{ totaal}}"
   - choose:
       - conditions:
           - condition: template
@@ -150,19 +150,11 @@ action:
               entity_id: !input ventilation_entity
             data:
               brightness_pct: 80
-          - service: timer.start
-            target:
-              entity_id: timer.ventilatie_override
-            data:
-              duration: "{{ override_duur | int * 60 }}"
           - delay:
               minutes: !input override_duration
           - service: input_boolean.turn_off
             target:
               entity_id: !input override_switch
-          - service: timer.cancel
-            target:
-              entity_id: timer.ventilatie_override
       - conditions:
           - condition: template
             value_template: "{{ verschil < verschil_drempel }}"
