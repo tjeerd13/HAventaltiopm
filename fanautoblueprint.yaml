@@ -139,7 +139,7 @@ action:
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
-      value: "binnen={{ binnen | round(1) }}, buiten={{ buiten | round(1) }}, pm25={{ pm25 | round(1) }}, verschil={{ verschil | round(1) }}, totaal={{ totaal | round(1) }}"
+      value: "binnen={{ binnen}}, buiten={{ buiten | round(1) }}, pm25={{ pm25 | round(1) }}, verschil={{ verschil | round(1) }}, totaal={{ totaal | round(1) }}"
   - choose:
       - conditions:
           - condition: template
