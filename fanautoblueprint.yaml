@@ -140,11 +140,7 @@ action:
   - service: input_text.set_value
     data:
       entity_id: !input log_sensor
-      value: "DEBUG: binnen={{ binnen }}, buiten={{ buiten }}, pm25={{ pm25 }}, verschil={{ verschil }}, totaal={{ totaal }}"
-  - service: input_text.set_value
-    data:
-      entity_id: !input log_sensor
-      value: "{{ logbericht }}"
+      value: "Override: {{ override_actief }}, Binnen: {{ binnen }}%, Buiten: {{ buiten }}%, Verschil: {{ verschil }}%, PM2.5: {{ pm25 }} µg/m³, Vocht schaal: {{ vocht_schaal | round(1) }}, Buiten factor: {{ buiten_factor }}, PM boost: {{ boost_pm | round(1) }}, Ventilatie: {{ totaal }}%"
   - choose:
       - conditions:
           - condition: template
